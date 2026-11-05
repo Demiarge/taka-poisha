@@ -1,22 +1,94 @@
-import { Stack } from 'expo-router';
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/inter';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
-import { colors } from '@/constants/theme';
+import { darkColors, fonts, lightColors, type ThemeColors } from '@/constants/theme';
+import { migrateDatabase } from '@/db/schema';
+import { ThemePreferenceProvider, useColors, useThemePreference } from '@/hooks/useTheme';
 
-/**
- * Root navigator: a stack with the tab bar at the bottom of it. Add
- * Transaction and Confirm are pushed on top of the tabs, so they get a back
- * button and hide the tab bar while the user is entering a transaction.
- */
-export default function RootLayout() {
+SplashScreen.preventAutoHideAsync();
+
+const navigationFonts = {
+  regular: { fontFamily: fonts.regular, fontWeight: 'normal' },
+  medium: { fontFamily: fonts.medium, fontWeight: 'normal' },
+  bold: { fontFamily: fonts.bold, fontWeight: 'normal' },
+  heavy: { fontFamily: fonts.extraBold, fontWeight: 'normal' },
+} as const;
+
+function navigationColors(colors: ThemeColors) {
+  return {
+    primary: colors.accent,
+    background: colors.background,
+    card: colors.background,
+    text: colors.text,
+    border: colors.border,
+  };
+}
+
+const lightNavigationTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, ...navigationColors(lightColors) },
+  fonts: navigationFonts,
+};
+
+const darkNavigationTheme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, ...navigationColors(darkColors) },
+  fonts: navigationFonts,
+};
+
+function RootNavigator() {
+  const { isDark } = useThemePreference();
+  const colors = useColors();
+
   return (
-    <>
-      <Stack screenOptions={{ headerTintColor: colors.primary }}>
+    <ThemeProvider value={isDark ? darkNavigationTheme : lightNavigationTheme}>
+      <Stack screenOptions={{ headerTintColor: colors.accent, headerShadowVisible: false }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="add-transaction" options={{ title: 'Add transaction' }} />
         <Stack.Screen name="confirm" options={{ title: 'Confirm' }} />
+        <Stack.Screen name="transaction/[id]" options={{ title: 'Edit transaction' }} />
       </Stack>
-      <StatusBar style="dark" />
-    </>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hide();
+    }
+  }, [fontsLoaded, fontError]);
+
+  // If the fonts fail to load, carry on with the system font.
+  if (!fontsLoaded && !fontError) {
+    return null;
+  }
+
+  return (
+    <ThemePreferenceProvider>
+      <SQLiteProvider databaseName="taka-poisha.db" onInit={migrateDatabase}>
+        <RootNavigator />
+      </SQLiteProvider>
+    </ThemePreferenceProvider>
   );
 }

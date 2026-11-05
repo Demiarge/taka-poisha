@@ -3,9 +3,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { BalanceCard } from '@/components/BalanceCard';
 import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
 import { TransactionRow } from '@/components/TransactionRow';
-import { colors, spacing } from '@/constants/theme';
-import { SAMPLE_TRANSACTIONS } from '@/data/sampleTransactions';
+import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
+import { useThemedStyles } from '@/hooks/useTheme';
+import { useTransactions } from '@/hooks/useTransactions';
 import { formatMonth, toIsoDate } from '@/utils/format';
 import { summariseMonth } from '@/utils/monthSummary';
 
@@ -13,9 +15,17 @@ const RECENT_COUNT = 5;
 
 export default function HomeScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(createStyles);
+  const transactions = useTransactions();
   const currentMonth = toIsoDate(new Date()).slice(0, 7); // "YYYY-MM"
-  const summary = summariseMonth(SAMPLE_TRANSACTIONS, currentMonth);
-  const recent = SAMPLE_TRANSACTIONS.slice(0, RECENT_COUNT);
+
+  // Wait for the first load so the balance doesn't flash ৳0.
+  if (!transactions) {
+    return <View style={styles.screen} />;
+  }
+
+  const summary = summariseMonth(transactions, currentMonth);
+  const recent = transactions.slice(0, RECENT_COUNT);
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -31,40 +41,44 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.list}>
-        {recent.map((transaction) => (
-          <TransactionRow key={transaction.id} transaction={transaction} />
-        ))}
+        {recent.length === 0 ? (
+          <EmptyState message="Nothing here yet. Add your first transaction." />
+        ) : (
+          recent.map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} />)
+        )}
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  link: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.primary,
-  },
-  list: {
-    gap: spacing.sm,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: spacing.gutter,
+      gap: spacing.md,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: spacing.sm,
+    },
+    sectionTitle: {
+      ...typography.subsection,
+      color: colors.text,
+    },
+    link: {
+      ...typography.meta,
+      color: colors.accent,
+    },
+    list: {
+      paddingVertical: spacing.sm,
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      overflow: 'hidden',
+    },
+  });

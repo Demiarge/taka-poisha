@@ -1,6 +1,5 @@
 export type TransactionType = 'income' | 'expense';
 
-/** A saved transaction, as the screens display it. */
 export type Transaction = {
   id: number;
   type: TransactionType;
@@ -16,11 +15,18 @@ export type Transaction = {
   date: string;
 };
 
-/**
- * What the parser extracts from the user's text. Mirrors the model output
- * format in PLAN.md. Anything the parser can't find is null, and the user
- * fills it in on the Confirm screen.
- */
+/** The parts of a transaction the user can edit. */
+export type TransactionFields = Pick<Transaction, 'type' | 'amount' | 'item' | 'shop' | 'category' | 'date'>;
+
+export type TransactionSource = 'text' | 'receipt_local' | 'receipt_gemini';
+
+export type NewTransaction = TransactionFields & {
+  currency: string;
+  source: TransactionSource;
+  rawInput: string | null;
+};
+
+/** Mirrors the model's output format. Fields it can't find are null, for the user to fill in. */
 export type ParsedTransaction = {
   type: TransactionType;
   amount: number | null;
@@ -32,10 +38,8 @@ export type ParsedTransaction = {
   isNewCategory: boolean;
 };
 
-/** Totals for one calendar month. */
 export type MonthSummary = {
   income: number;
   expenses: number;
-  /** Income minus expenses; negative when the month is overspent. */
   remaining: number;
 };

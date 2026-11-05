@@ -3,22 +3,28 @@ import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 
-import { colors } from '@/constants/theme';
+import { useColors } from '@/hooks/useTheme';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-/** Returns a tab bar icon renderer for the given Ionicons glyph. */
 function tabIcon(name: IoniconName) {
-  return ({ color, size }: { color: ColorValue; size: number }) => (
-    // React Native's ColorValue also allows null and numbers, which the icon
-    // types reject. Our tab colours come from the theme, so they're strings.
-    <Ionicons name={name} size={size} color={typeof color === 'string' ? color : undefined} />
-  );
+  return function TabIcon({ color, size }: { color: ColorValue; size: number }) {
+    // ColorValue can be null or a number, which the icon types reject. Theme colours are strings.
+    return <Ionicons name={name} size={size} color={typeof color === 'string' ? color : undefined} />;
+  };
 }
 
 export default function TabsLayout() {
+  const colors = useColors();
+
   return (
-    <Tabs screenOptions={{ tabBarActiveTintColor: colors.primary }}>
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textMuted,
+        headerShadowVisible: false,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{ title: 'Home', headerTitle: 'Taka Poisha', tabBarIcon: tabIcon('home-outline') }}

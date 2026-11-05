@@ -5,13 +5,15 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { TypeToggle } from '@/components/TypeToggle';
-import { colors, spacing } from '@/constants/theme';
+import { spacing, typography, type ThemeColors } from '@/constants/theme';
+import { useThemedStyles } from '@/hooks/useTheme';
 import { parseTransaction } from '@/services/parseTransaction';
 import type { TransactionType } from '@/types/transaction';
 import { toIsoDate } from '@/utils/format';
 
 export default function AddTransactionScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(createStyles);
   // null = the user hasn't picked, so the parser decides.
   const [type, setType] = useState<TransactionType | null>(null);
   const [text, setText] = useState('');
@@ -31,6 +33,7 @@ export default function AddTransactionScreen() {
           shop: parsed.shop ?? '',
           date: parsed.date ?? toIsoDate(new Date()),
           category: parsed.category,
+          rawInput: text,
         },
       });
     } finally {
@@ -62,22 +65,23 @@ export default function AddTransactionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    padding: spacing.md,
-    gap: spacing.md,
-    backgroundColor: colors.background,
-  },
-  typePicker: {
-    gap: spacing.xs,
-  },
-  hint: {
-    fontSize: 13,
-    color: colors.textMuted,
-  },
-  input: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      padding: spacing.gutter,
+      gap: spacing.md,
+      backgroundColor: colors.background,
+    },
+    typePicker: {
+      gap: spacing.xs,
+    },
+    hint: {
+      ...typography.meta,
+      color: colors.textMuted,
+    },
+    input: {
+      minHeight: 120,
+      textAlignVertical: 'top',
+    },
+  });

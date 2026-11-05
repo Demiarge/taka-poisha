@@ -1,7 +1,9 @@
 import Constants from 'expo-constants';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { SegmentedControl } from '@/components/SegmentedControl';
+import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
+import { useColors, useThemedStyles, useThemePreference, type ThemePreference } from '@/hooks/useTheme';
 
 // Placeholder values until the real settings exist.
 const SETTINGS = [
@@ -11,9 +13,28 @@ const SETTINGS = [
   { label: 'App version', value: Constants.expoConfig?.version ?? 'Unknown' },
 ];
 
+const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 export default function SettingsScreen() {
+  const colors = useColors();
+  const styles = useThemedStyles(createStyles);
+  const { preference, setPreference } = useThemePreference();
+
   return (
     <View style={styles.screen}>
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Theme</Text>
+        <SegmentedControl
+          options={THEME_OPTIONS.map((option) => ({ ...option, fill: colors.primary }))}
+          value={preference}
+          onChange={setPreference}
+        />
+      </View>
+
       <View style={styles.card}>
         {SETTINGS.map((setting, index) => (
           <View key={setting.label} style={[styles.row, index > 0 && styles.divider]}>
@@ -26,31 +47,40 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    padding: spacing.md,
-    backgroundColor: colors.background,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-  },
-  divider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-  },
-  label: {
-    fontSize: 16,
-    color: colors.text,
-  },
-  value: {
-    fontSize: 16,
-    color: colors.textMuted,
-  },
-});
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    screen: {
+      flex: 1,
+      padding: spacing.gutter,
+      gap: spacing.lg,
+      backgroundColor: colors.background,
+    },
+    section: {
+      gap: spacing.sm,
+    },
+    sectionLabel: {
+      ...typography.meta,
+      color: colors.textMuted,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+    },
+    row: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      padding: spacing.md,
+    },
+    divider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    label: {
+      ...typography.body,
+      color: colors.text,
+    },
+    value: {
+      ...typography.body,
+      color: colors.textMuted,
+    },
+  });

@@ -1,26 +1,30 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
+import type { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { hero, radius, spacing, typography } from '@/constants/theme';
 import type { MonthSummary } from '@/types/transaction';
 import { formatAmount } from '@/utils/format';
 
 type BalanceCardProps = {
-  /** e.g. "October 2026" */
   title: string;
   summary: MonthSummary;
 };
 
 /** The month's remaining balance, with total income and expenses below it. */
 export function BalanceCard({ title, summary }: BalanceCardProps) {
+  // Red wouldn't be readable on the green card, so the label carries the warning.
+  const status = summary.remaining < 0 ? 'Overspent' : 'Remaining';
+
   return (
     <View style={styles.card}>
-      <Text style={styles.label}>{title} · Remaining</Text>
-      <Text style={[styles.remaining, summary.remaining < 0 && styles.overspent]}>
-        {formatAmount(summary.remaining)}
+      <Text style={styles.label}>
+        {title} · {status}
       </Text>
+      <Text style={styles.remaining}>{formatAmount(summary.remaining)}</Text>
       <View style={styles.totals}>
-        <Total label="Income" amount={summary.income} color={colors.income} />
-        <Total label="Expenses" amount={summary.expenses} color={colors.expense} />
+        <Total label="Income" amount={summary.income} icon="arrow-down" />
+        <Total label="Expenses" amount={summary.expenses} icon="arrow-up" />
       </View>
     </View>
   );
@@ -29,50 +33,56 @@ export function BalanceCard({ title, summary }: BalanceCardProps) {
 type TotalProps = {
   label: string;
   amount: number;
-  color: string;
+  icon: ComponentProps<typeof Ionicons>['name'];
 };
 
-function Total({ label, amount, color }: TotalProps) {
+function Total({ label, amount, icon }: TotalProps) {
   return (
     <View style={styles.total}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.totalAmount, { color }]}>{formatAmount(amount)}</Text>
+      <View style={styles.totalLabel}>
+        <Ionicons name={icon} size={14} color={hero.textMuted} />
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      <Text style={styles.totalAmount}>{formatAmount(amount)}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: hero.background,
+    backgroundImage: hero.gradient,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.gutter,
     gap: spacing.xs,
   },
   label: {
-    fontSize: 14,
-    color: colors.textMuted,
+    ...typography.meta,
+    color: hero.textMuted,
   },
   remaining: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  overspent: {
-    color: colors.expense,
+    ...typography.balance,
+    color: hero.text,
   },
   totals: {
     flexDirection: 'row',
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
     paddingTop: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: hero.divider,
   },
   total: {
     flex: 1,
     gap: 2,
   },
+  totalLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
   totalAmount: {
-    fontSize: 18,
-    fontWeight: '600',
+    ...typography.amount,
+    fontSize: 16,
+    color: hero.text,
   },
 });
