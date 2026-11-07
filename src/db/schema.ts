@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { STARTER_CATEGORIES } from '@/constants/model';
+
 // `embedding` stays empty until similarity matching is added.
 // UNIQUE (id, type) backs the two-column FK, which makes a category's type match its transaction's.
 const CREATE_TABLES = `
@@ -32,7 +34,22 @@ const CREATE_TABLES = `
   CREATE INDEX idx_transactions_date ON transactions (date DESC, id DESC);
 `;
 
-const DATABASE_VERSION = 1;
+const DATABASE_VERSION = 2;
+
+/** The model's prompt needs a category list, so a new database starts with the list it was trained on. */
+async function seedStarterCategories(db: SQLiteDatabase): Promise<void> {
+  const createdAt = new Date().toISOString();
+  for (const type of ['expense', 'income'] as const) {
+    for (const name of STARTER_CATEGORIES[type]) {
+      await db.runAsync(
+        'INSERT OR IGNORE INTO categories (name, type, created_at) VALUES (?, ?, ?)',
+        name,
+        type,
+        createdAt,
+      );
+    }
+  }
+}
 
 /** Runs when the database opens: applies settings, then any missing migrations. */
 export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
@@ -48,6 +65,9 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
   await db.withTransactionAsync(async () => {
     if (currentVersion < 1) {
       await db.execAsync(CREATE_TABLES);
+    }
+    if (currentVersion < 2) {
+      await seedStarterCategories(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });

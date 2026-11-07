@@ -38,6 +38,11 @@ export const COMPLETION_SETTINGS = {
   stop: ['<end_of_turn>', '<|im_end|>'],
 };
 
+export const UNCATEGORISED = 'Uncategorised';
+
+/** Most categories of each type sent in the prompt, so it stays short. */
+export const MAX_PROMPT_CATEGORIES = { expense: 12, income: 8 };
+
 export const JSON_GRAMMAR = String.raw`root ::= "{\"type\":" kind ",\"amount\":" amount ",\"currency\":" currency ",\"item\":" text ",\"shop\":" (text | "null") ",\"date\":" date ",\"category\":" text ",\"is_new_category\":" flag "}"
 kind ::= "\"income\"" | "\"expense\""
 amount ::= "null" | [1-9] [0-9]* fraction? | "0" fraction

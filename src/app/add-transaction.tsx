@@ -1,11 +1,14 @@
 import { useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { TypeToggle } from '@/components/TypeToggle';
+import { STARTER_CATEGORIES } from '@/constants/model';
 import { spacing, typography, type ThemeColors } from '@/constants/theme';
+import { listPromptCategories } from '@/db/categories';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { parseTransaction } from '@/services/parseTransaction';
 import type { TransactionType } from '@/types/transaction';
@@ -13,6 +16,7 @@ import { toIsoDate } from '@/utils/format';
 
 export default function AddTransactionScreen() {
   const router = useRouter();
+  const db = useSQLiteContext();
   const styles = useThemedStyles(createStyles);
   // null = the user hasn't picked, so the parser decides.
   const [type, setType] = useState<TransactionType | null>(null);
@@ -22,18 +26,22 @@ export default function AddTransactionScreen() {
   async function handleNext() {
     setIsReading(true);
     try {
-      const parsed = await parseTransaction(text);
+      const categories = await listPromptCategories(db).catch(() => STARTER_CATEGORIES);
+      const parsed = await parseTransaction(text, categories, type ?? undefined);
       // Route params must be strings, so missing values become ''.
       router.push({
         pathname: '/confirm',
         params: {
-          type: type ?? parsed.type,
+          type: parsed.type,
           amount: parsed.amount?.toString() ?? '',
           item: parsed.item,
           shop: parsed.shop ?? '',
           date: parsed.date ?? toIsoDate(new Date()),
           category: parsed.category,
           rawInput: text,
+          readBy: parsed.readBy,
+          otherCurrency: parsed.otherCurrency ?? '',
+          typeOverridden: parsed.typeOverridden ? '1' : '',
         },
       });
     } finally {

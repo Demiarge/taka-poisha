@@ -15,6 +15,7 @@ export const lightColors = {
   border: '#E4E7EB',
   income: '#15803D',
   expense: '#DC2626',
+  warning: '#B45309',
   /** Backgrounds behind white text, so these stay dark in both themes. */
   incomeFill: '#15803D',
   expenseFill: '#DC2626',
@@ -35,6 +36,7 @@ export const darkColors: ThemeColors = {
   border: '#262626',
   income: '#4ADE80',
   expense: '#F87171',
+  warning: '#FBBF24',
   incomeFill: '#15803D',
   expenseFill: '#DC2626',
 };

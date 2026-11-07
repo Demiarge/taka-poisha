@@ -1,13 +1,70 @@
-import { Redirect } from 'expo-router';
-import { useState } from 'react';
+import { File, Paths } from 'expo-file-system';
+import { Redirect, useLocalSearchParams } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { SegmentedControl } from '@/components/SegmentedControl';
+import { STARTER_CATEGORIES, type CategoryLists } from '@/constants/model';
 import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { useColors, useThemedStyles } from '@/hooks/useTheme';
 import { getModelFile, loadModel, runModel } from '@/services/model';
+import { parseTransaction } from '@/services/parseTransaction';
+import type { TransactionType } from '@/types/transaction';
+
+type ReplayCase = { set: string; index: number; text: string; categories: CategoryLists | null };
+
+/** Runs the saved test sentences pushed by training/run6/phone/run_phone.py and saves the answers. */
+async function replayCases(threads: string, show: (line: string) => void) {
+  const output = new File(Paths.document, `phone-results-${threads}.json`);
+  if (output.exists) output.delete();
+  const cases: ReplayCase[] = JSON.parse(await new File(Paths.document, 'phone-cases.json').text());
+
+  const started = Date.now();
+  const context = await loadModel(threads === 'auto' ? undefined : Number(threads));
+  const loadMs = Date.now() - started;
+  const results = [];
+  try {
+    for (const [n, item] of cases.entries()) {
+      show(`Replay ${threads} threads: ${n + 1}/${cases.length}`);
+      const caseStarted = Date.now();
+      const { answer, result } = await runModel(context, item.text, item.categories ?? undefined);
+      results.push({
+        set: item.set,
+        index: item.index,
+        answer,
+        ms: Date.now() - caseStarted,
+        prompt_n: result.timings.prompt_n,
+        prompt_ms: result.timings.prompt_ms,
+        predicted_n: result.timings.predicted_n,
+        predicted_ms: result.timings.predicted_ms,
+      });
+    }
+  } finally {
+    await context.release();
+  }
+  output.write(JSON.stringify({ threads, loadMs, androidLib: context.androidLib ?? null, results }));
+  show(`Replay done: ${results.length} sentences saved`);
+}
+
+type CheckCase = { text: string; type?: TransactionType };
+
+/** Runs sentences through the same reader as the Add screen, including loading and unloading each time. */
+async function checkCases(name: string, show: (line: string) => void) {
+  const output = new File(Paths.document, `phone-check-${name}-results.json`);
+  if (output.exists) output.delete();
+  const cases: CheckCase[] = JSON.parse(await new File(Paths.document, `phone-check-${name}.json`).text());
+  const results = [];
+  for (const [n, item] of cases.entries()) {
+    show(`Replay check ${name}: ${n + 1}/${cases.length}`);
+    const started = Date.now();
+    const parsed = await parseTransaction(item.text, STARTER_CATEGORIES, item.type);
+    results.push({ ...item, ms: Date.now() - started, parsed });
+  }
+  output.write(JSON.stringify({ results }));
+  show(`Replay done: ${results.length} checks saved`);
+}
 
 type Threads = 'auto' | '2' | '4' | '6';
 
@@ -26,6 +83,22 @@ export default function ModelTestScreen() {
   const [threads, setThreads] = useState<Threads>('auto');
   const [report, setReport] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const { replay, check } = useLocalSearchParams<{ replay?: string; check?: string }>();
+  const replayStarted = useRef<string | null>(null);
+
+  // Deep links start a run: takapoisha://model-test?replay=4 or ?check=forced.
+  useEffect(() => {
+    const key = replay ? `replay ${replay}` : check ? `check ${check}` : null;
+    if (!__DEV__ || !key || replayStarted.current === key) return;
+    replayStarted.current = key;
+    setIsRunning(true);
+    // Progress lines replace each other instead of piling up.
+    const show = (line: string) =>
+      setReport((lines) => (lines.at(-1)?.startsWith('Replay') ? [...lines.slice(0, -1), line] : [...lines, line]));
+    (replay ? replayCases(replay, show) : checkCases(check!, show))
+      .catch((error) => show(`Error: ${error instanceof Error ? error.message : String(error)}`))
+      .finally(() => setIsRunning(false));
+  }, [replay, check]);
 
   if (!__DEV__) {
     return <Redirect href="/" />;

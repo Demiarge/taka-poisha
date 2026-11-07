@@ -1,8 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { TransactionForm } from '@/components/TransactionForm';
+import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { addTransaction } from '@/db/transactions';
+import { useThemedStyles } from '@/hooks/useTheme';
 import type { TransactionFields } from '@/types/transaction';
 
 type ConfirmParams = {
@@ -13,15 +16,28 @@ type ConfirmParams = {
   date?: string;
   category?: string;
   rawInput?: string;
+  readBy?: string;
+  otherCurrency?: string;
+  typeOverridden?: string;
 };
 
 /** Shows the extracted details so the user can correct them before saving. */
 export default function ConfirmScreen() {
   const router = useRouter();
   const db = useSQLiteContext();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<ConfirmParams>();
 
+  const notices = [
+    params.readBy === 'keywords' && "The AI couldn't read this, so check every field.",
+    params.typeOverridden &&
+      `Check this: it reads like ${params.type === 'income' ? 'an expense' : 'income'}, but you picked ${params.type}.`,
+    params.otherCurrency &&
+      `This mentions ${params.otherCurrency}. The app only tracks taka for now, so convert the amount to ৳ before saving.`,
+  ].filter(Boolean);
+
   async function handleSave(fields: TransactionFields) {
+    // Home adds every amount into one ৳ total, so everything is saved as BDT for now.
     await addTransaction(db, {
       ...fields,
       currency: 'BDT',
@@ -43,6 +59,31 @@ export default function ConfirmScreen() {
       }}
       submitTitle="Save"
       onSubmit={handleSave}
+      header={
+        notices.length > 0 && (
+          <View style={styles.notice}>
+            {notices.map((notice) => (
+              <Text key={String(notice)} style={styles.noticeText}>
+                {notice}
+              </Text>
+            ))}
+          </View>
+        )
+      }
     />
   );
 }
+
+const createStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    notice: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.lg,
+      padding: spacing.md,
+      gap: spacing.xs,
+    },
+    noticeText: {
+      ...typography.meta,
+      color: colors.warning,
+    },
+  });

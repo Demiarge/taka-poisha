@@ -25,11 +25,13 @@ type TransactionFormProps = {
   submitTitle: string;
   /** Should leave the screen when it succeeds. If it throws, the form stays open. */
   onSubmit: (fields: TransactionFields) => Promise<void>;
+  /** Shown above the fields. */
+  header?: ReactNode;
   children?: ReactNode;
 };
 
 /** The transaction fields, shared by the Confirm and Edit screens. */
-export function TransactionForm({ initialValues, submitTitle, onSubmit, children }: TransactionFormProps) {
+export function TransactionForm({ initialValues, submitTitle, onSubmit, header, children }: TransactionFormProps) {
   const styles = useThemedStyles(createStyles);
 
   const [type, setType] = useState(initialValues.type);
@@ -69,6 +71,7 @@ export function TransactionForm({ initialValues, submitTitle, onSubmit, children
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
+      {header}
       <TypeToggle value={type} onChange={setType} />
       <FormField label="Amount (৳)" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" />
       <FormField label="Item" value={item} onChangeText={setItem} />
