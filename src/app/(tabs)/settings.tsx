@@ -1,6 +1,8 @@
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Button } from '@/components/Button';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { useColors, useThemedStyles, useThemePreference, type ThemePreference } from '@/hooks/useTheme';
@@ -23,6 +25,7 @@ export default function SettingsScreen() {
   const colors = useColors();
   const styles = useThemedStyles(createStyles);
   const { preference, setPreference } = useThemePreference();
+  const router = useRouter();
 
   return (
     <View style={styles.screen}>
@@ -43,6 +46,8 @@ export default function SettingsScreen() {
           </View>
         ))}
       </View>
+
+      {__DEV__ && <Button title="Model test (development)" onPress={() => router.push('/model-test')} />}
     </View>
   );
 }

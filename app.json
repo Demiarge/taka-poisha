@@ -38,7 +38,8 @@
           }
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      ["llama.rn", { "enableOpenCLAndHexagon": false }]
     ],
     "experiments": {
       "typedRoutes": true

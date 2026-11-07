@@ -58,6 +58,7 @@ function RootNavigator() {
         <Stack.Screen name="add-transaction" options={{ title: 'Add transaction' }} />
         <Stack.Screen name="confirm" options={{ title: 'Confirm' }} />
         <Stack.Screen name="transaction/[id]" options={{ title: 'Edit transaction' }} />
+        <Stack.Screen name="model-test" options={{ title: 'Model test' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
