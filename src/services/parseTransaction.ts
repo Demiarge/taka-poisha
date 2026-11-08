@@ -12,14 +12,17 @@ const FILLER_WORDS = /\b(spent|spend|paid|pay|bought|got|received|earned|on|for|
 const OTHER_CURRENCY = /(\$|€|£|₹|\b(usd|dollars?|eur|euros?|gbp|pounds?|inr|rupees?|rs|sar|riyals?|aed|dirhams?)\b)/i;
 
 export type ReadResult = ParsedTransaction & {
-  readBy: 'model' | 'keywords';
+  readBy: 'model' | 'keywords' | 'api';
   /** Set when the text mentions a currency other than taka; the app only totals taka for now. */
   otherCurrency: string | null;
   /** True when the user picked a type and the model read the other one. */
   typeOverridden: boolean;
+  /** The answer before cleaning, for the dev checks. */
+  rawAnswer: ModelAnswer;
 };
 
-type ModelAnswer = {
+/** The raw JSON fields, from Gemma, the keyword reader or an online API. */
+export type ModelAnswer = {
   type: TransactionType;
   amount: number | null;
   currency: string;
@@ -86,7 +89,17 @@ export async function parseTransaction(
     answer = readWithKeywords(text);
     readBy = 'keywords';
   }
+  return finishAnswer(answer, text, categories, readBy, pickedType);
+}
 
+/** Cleans a raw answer: picked type wins, wrong-type category cleared, dates worked out, text trimmed. */
+export function finishAnswer(
+  answer: ModelAnswer,
+  text: string,
+  categories: CategoryLists,
+  readBy: ReadResult['readBy'],
+  pickedType?: TransactionType,
+): ReadResult {
   const type = pickedType ?? answer.type;
   const typeOverridden = pickedType !== undefined && answer.type !== pickedType;
   let category = cleanText(answer.category) ?? UNCATEGORISED;
@@ -110,6 +123,7 @@ export async function parseTransaction(
     isNewCategory: category !== '' && category !== UNCATEGORISED && !inList(categories[type], category),
     readBy,
     otherCurrency: currency !== 'BDT' ? currency : (mentioned ?? null),
-    typeOverridden: typeOverridden && readBy === 'model',
+    typeOverridden: typeOverridden && readBy !== 'keywords',
+    rawAnswer: answer,
   };
 }

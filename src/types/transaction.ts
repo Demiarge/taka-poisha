@@ -18,7 +18,7 @@ export type Transaction = {
 /** The parts of a transaction the user can edit. */
 export type TransactionFields = Pick<Transaction, 'type' | 'amount' | 'item' | 'shop' | 'category' | 'date'>;
 
-export type TransactionSource = 'text' | 'receipt_local' | 'receipt_gemini';
+export type TransactionSource = 'text' | 'receipt_local' | 'receipt_api';
 
 export type NewTransaction = TransactionFields & {
   currency: string;
@@ -41,7 +41,8 @@ export type ParsedTransaction = {
 /** A line under the category chips explaining an automatic choice or offering one, with a one-tap action. */
 export type CategoryNote = {
   text: string;
-  actionLabel: string;
+  /** No button when missing, for notes that only explain. */
+  actionLabel?: string;
   /** The category the action switches to. */
   value: string;
   /** The note shows only while this is the chosen category. */

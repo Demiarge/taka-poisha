@@ -2,7 +2,27 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { STARTER_CATEGORIES } from '@/constants/model';
 
-// `embedding` stays empty until similarity matching is added.
+const TRANSACTIONS_TABLE = (name: string) => `
+  CREATE TABLE ${name} (
+    id           INTEGER PRIMARY KEY,
+    type         TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+    amount       REAL NOT NULL CHECK (amount > 0),
+    currency     TEXT NOT NULL DEFAULT 'BDT',
+    item         TEXT NOT NULL,
+    shop         TEXT,
+    category_id  INTEGER NOT NULL,
+    date         TEXT NOT NULL,
+    source       TEXT NOT NULL CHECK (source IN ('text', 'receipt_local', 'receipt_api')),
+    raw_input    TEXT,
+    embedding    BLOB,
+    created_at   TEXT NOT NULL,
+    FOREIGN KEY (category_id, type) REFERENCES categories (id, type)
+  );
+`;
+
+const DATE_INDEX = 'CREATE INDEX idx_transactions_date ON transactions (date DESC, id DESC);';
+
+// Category `embedding` holds MiniLM vectors for matching; the transactions column is unused.
 // UNIQUE (id, type) backs the two-column FK, which makes a category's type match its transaction's.
 const CREATE_TABLES = `
   CREATE TABLE categories (
@@ -14,27 +34,11 @@ const CREATE_TABLES = `
     UNIQUE (name, type),
     UNIQUE (id, type)
   );
-
-  CREATE TABLE transactions (
-    id           INTEGER PRIMARY KEY,
-    type         TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-    amount       REAL NOT NULL CHECK (amount > 0),
-    currency     TEXT NOT NULL DEFAULT 'BDT',
-    item         TEXT NOT NULL,
-    shop         TEXT,
-    category_id  INTEGER NOT NULL,
-    date         TEXT NOT NULL,
-    source       TEXT NOT NULL CHECK (source IN ('text', 'receipt_local', 'receipt_gemini')),
-    raw_input    TEXT,
-    embedding    BLOB,
-    created_at   TEXT NOT NULL,
-    FOREIGN KEY (category_id, type) REFERENCES categories (id, type)
-  );
-
-  CREATE INDEX idx_transactions_date ON transactions (date DESC, id DESC);
+  ${TRANSACTIONS_TABLE('transactions')}
+  ${DATE_INDEX}
 `;
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 
 /** The model's prompt needs a category list, so a new database starts with the list it was trained on. */
 async function seedStarterCategories(db: SQLiteDatabase): Promise<void> {
@@ -49,6 +53,24 @@ async function seedStarterCategories(db: SQLiteDatabase): Promise<void> {
       );
     }
   }
+}
+
+/**
+ * Version 3 renames the photo-sent-to-an-API source to 'receipt_api'. SQLite can't change a CHECK rule,
+ * so the table is copied; nothing references transactions, so foreign keys can stay on.
+ */
+async function renameApiSource(db: SQLiteDatabase): Promise<void> {
+  await db.execAsync(`
+    ${TRANSACTIONS_TABLE('transactions_v3')}
+    INSERT INTO transactions_v3
+      SELECT id, type, amount, currency, item, shop, category_id, date,
+             CASE WHEN source IN ('text', 'receipt_local') THEN source ELSE 'receipt_api' END,
+             raw_input, embedding, created_at
+      FROM transactions;
+    DROP TABLE transactions;
+    ALTER TABLE transactions_v3 RENAME TO transactions;
+    ${DATE_INDEX}
+  `);
 }
 
 /** Runs when the database opens: applies settings, then any missing migrations. */
@@ -68,6 +90,10 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     }
     if (currentVersion < 2) {
       await seedStarterCategories(db);
+    }
+    // A fresh database already has the new rule.
+    if (currentVersion >= 1 && currentVersion < 3) {
+      await renameApiSource(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });

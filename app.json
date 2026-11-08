@@ -39,7 +39,20 @@
         }
       ],
       "expo-sqlite",
-      ["llama.rn", { "enableOpenCLAndHexagon": false }]
+      [
+        "llama.rn",
+        {
+          "enableOpenCLAndHexagon": false
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Taka Poisha uses the camera to photograph receipts.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

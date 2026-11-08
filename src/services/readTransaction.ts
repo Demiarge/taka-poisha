@@ -57,8 +57,16 @@ async function chooseCategory(
 
 /** Everything the Add screen does after Next: categories for the prompt, the model, then the category choice. */
 export async function readTransaction(db: SQLiteDatabase, text: string, pickedType?: TransactionType): Promise<ReadTransaction> {
-  const categories = await listPromptCategories(db).catch(() => STARTER_CATEGORIES);
-  const read = await parseTransaction(text, categories, pickedType);
+  const categories = await promptCategories(db);
+  return completeRead(db, await parseTransaction(text, categories, pickedType), categories);
+}
+
+export function promptCategories(db: SQLiteDatabase): Promise<CategoryLists> {
+  return listPromptCategories(db).catch(() => STARTER_CATEGORIES);
+}
+
+/** The category step, shared by typed text, receipts and the API reader. */
+export async function completeRead(db: SQLiteDatabase, read: ReadResult, categories: CategoryLists): Promise<ReadTransaction> {
   const { category, categoryNote } = await chooseCategory(db, read, categories).catch(() => ({
     category: read.category,
     categoryNote: null,

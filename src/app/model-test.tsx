@@ -12,6 +12,7 @@ import type { CategoryLists } from '@/constants/model';
 import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { useColors, useThemedStyles } from '@/hooks/useTheme';
 import { getModelFile, loadModel, runModel } from '@/services/model';
+import { readReceiptPhoto } from '@/services/readReceipt';
 import { readTransaction } from '@/services/readTransaction';
 import type { TransactionType } from '@/types/transaction';
 
@@ -86,6 +87,26 @@ async function embedTexts(name: string, show: (line: string) => void) {
   show(`Replay done: ${results.length} embeddings saved`);
 }
 
+/** Reads receipt photos copied into the app by training/receipt-test/check_receipts.py. */
+async function checkReceipts(db: SQLiteDatabase, name: string, show: (line: string) => void) {
+  const output = new File(Paths.document, `phone-receipts-${name}-results.json`);
+  if (output.exists) output.delete();
+  const photos: string[] = JSON.parse(await new File(Paths.document, `phone-receipts-${name}.json`).text());
+  const results = [];
+  for (const [n, photo] of photos.entries()) {
+    show(`Replay receipts ${name}: ${n + 1}/${photos.length}`);
+    const started = Date.now();
+    try {
+      const read = await readReceiptPhoto(db, new File(Paths.document, photo).uri);
+      results.push({ photo, ms: Date.now() - started, read });
+    } catch (error) {
+      results.push({ photo, ms: Date.now() - started, error: error instanceof Error ? error.message : String(error) });
+    }
+  }
+  output.write(JSON.stringify({ results }));
+  show(`Replay done: ${results.length} receipts saved`);
+}
+
 type CheckCase = { text: string; type?: TransactionType };
 
 /** Runs sentences through the same reader as the Add screen, including loading and unloading each time. */
@@ -122,22 +143,42 @@ export default function ModelTestScreen() {
   const [threads, setThreads] = useState<Threads>('auto');
   const [report, setReport] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const { replay, check, embed } = useLocalSearchParams<{ replay?: string; check?: string; embed?: string }>();
+  const { replay, check, embed, receipts } = useLocalSearchParams<{
+    replay?: string;
+    check?: string;
+    embed?: string;
+    receipts?: string;
+  }>();
   const replayStarted = useRef<string | null>(null);
 
   // Deep links start a run: takapoisha://model-test?replay=4, ?check=forced or ?embed=minilm.
   useEffect(() => {
-    const key = replay ? `replay ${replay}` : check ? `check ${check}` : embed ? `embed ${embed}` : null;
+    const key = replay
+      ? `replay ${replay}`
+      : check
+        ? `check ${check}`
+        : embed
+          ? `embed ${embed}`
+          : receipts
+            ? `receipts ${receipts}`
+            : null;
     if (!__DEV__ || !key || replayStarted.current === key) return;
     replayStarted.current = key;
     setIsRunning(true);
     // Progress lines replace each other instead of piling up.
     const show = (line: string) =>
       setReport((lines) => (lines.at(-1)?.startsWith('Replay') ? [...lines.slice(0, -1), line] : [...lines, line]));
-    (replay ? replayCases(replay, show) : check ? checkCases(db, check, show) : embedTexts(embed!, show))
+    (replay
+      ? replayCases(replay, show)
+      : check
+        ? checkCases(db, check, show)
+        : receipts
+          ? checkReceipts(db, receipts, show)
+          : embedTexts(embed!, show)
+    )
       .catch((error) => show(`Error: ${error instanceof Error ? error.message : String(error)}`))
       .finally(() => setIsRunning(false));
-  }, [replay, check, embed, db]);
+  }, [replay, check, embed, receipts, db]);
 
   if (!__DEV__) {
     return <Redirect href="/" />;

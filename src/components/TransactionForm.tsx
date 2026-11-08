@@ -1,15 +1,16 @@
 import { useHeaderHeight } from 'expo-router/react-navigation';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { CategoryChips } from '@/components/CategoryChips';
+import { FieldNote } from '@/components/FieldNote';
 import { FormField } from '@/components/FormField';
 import { TypeToggle } from '@/components/TypeToggle';
 import { CATEGORY_MATCH, UNCATEGORISED, type CategoryLists } from '@/constants/model';
-import { fonts, spacing, typography, type ThemeColors } from '@/constants/theme';
+import { spacing, typography, type ThemeColors } from '@/constants/theme';
 import { hasCategory, listCategories } from '@/db/categories';
 import { useThemedStyles } from '@/hooks/useTheme';
 import { closestCategory } from '@/services/categoryMatch';
@@ -33,12 +34,24 @@ type TransactionFormProps = {
   header?: ReactNode;
   /** Explains or offers a category choice, under the chips. */
   categoryNote?: CategoryNote | null;
+  /** Explains an amount taken from a receipt total, under the amount. */
+  amountNote?: CategoryNote | null;
+  /** Explains the date, under the date field. */
+  dateNote?: CategoryNote | null;
   /** Shown below the fields. */
   children?: ReactNode;
 };
 
 /** The transaction fields, shared by the Confirm and Edit screens. */
-export function TransactionForm({ initialValues, onSubmit, header, categoryNote, children }: TransactionFormProps) {
+export function TransactionForm({
+  initialValues,
+  onSubmit,
+  header,
+  categoryNote,
+  amountNote,
+  dateNote,
+  children,
+}: TransactionFormProps) {
   const db = useSQLiteContext();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -98,7 +111,7 @@ export function TransactionForm({ initialValues, onSubmit, header, categoryNote,
       await onSubmit({
         type,
         amount: parsedAmount,
-        item: item.trim(),
+        item: item.replace(/\s+/g, ' ').trim(),
         shop: shop.trim() || null,
         date: trimmedDate,
         category: categoryName || UNCATEGORISED,
@@ -139,6 +152,8 @@ export function TransactionForm({ initialValues, onSubmit, header, categoryNote,
   }
 
   const showNote = categoryNote != null && category.trim().toLowerCase() === categoryNote.shownFor.trim().toLowerCase();
+  const showAmountNote = amountNote != null && amountIsValid && parsedAmount === Number(amountNote.shownFor);
+  const showDateNote = dateNote != null && trimmedDate === dateNote.shownFor;
 
   return (
     // Edge-to-edge Android no longer resizes the window for the keyboard, so Save is lifted by hand.
@@ -149,26 +164,41 @@ export function TransactionForm({ initialValues, onSubmit, header, categoryNote,
           <TypeToggle value={type} onChange={handleTypeChange} />
           <Text style={styles.hint}>Money going out is an expense, money coming in is income.</Text>
         </View>
+        <View style={styles.section}>
+          <FormField
+            label="Amount (৳)"
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="decimal-pad"
+            style={styles.amount}
+          />
+          {showAmountNote && <FieldNote note={amountNote} onAction={setAmount} />}
+        </View>
+        {/* Up to 3 lines, so a long item from a receipt shows from its start. Enter closes the keyboard. */}
         <FormField
-          label="Amount (৳)"
-          value={amount}
-          onChangeText={setAmount}
-          keyboardType="decimal-pad"
-          style={styles.amount}
+          label="Item"
+          value={item}
+          onChangeText={setItem}
+          multiline
+          submitBehavior="blurAndSubmit"
+          returnKeyType="done"
+          style={styles.item}
         />
-        <FormField label="Item" value={item} onChangeText={setItem} />
         <FormField
           label={type === 'income' ? 'From' : 'Shop'}
           value={shop}
           onChangeText={setShop}
           placeholder="Optional"
         />
-        <FormField
-          label={dateIsValid ? 'Date' : 'Date (use YYYY-MM-DD)'}
-          value={date}
-          onChangeText={setDate}
-          placeholder="YYYY-MM-DD"
-        />
+        <View style={styles.section}>
+          <FormField
+            label={dateIsValid ? 'Date' : 'Date (use YYYY-MM-DD)'}
+            value={date}
+            onChangeText={setDate}
+            placeholder="YYYY-MM-DD"
+          />
+          {showDateNote && <FieldNote note={dateNote} />}
+        </View>
         <View style={styles.section}>
           <Text style={styles.label}>Category</Text>
           {/* A new key per type resets the row's scroll, so a short list isn't left scrolled out of view. */}
@@ -179,18 +209,7 @@ export function TransactionForm({ initialValues, onSubmit, header, categoryNote,
             type={type}
             onChange={handlePickCategory}
           />
-          {showNote && (
-            <View style={styles.note}>
-              <Text style={styles.noteText}>{categoryNote.text}</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => handlePickCategory(categoryNote.value)}
-                hitSlop={spacing.sm}
-              >
-                <Text style={styles.noteAction}>{categoryNote.actionLabel}</Text>
-              </Pressable>
-            </View>
-          )}
+          {showNote && <FieldNote note={categoryNote} onAction={handlePickCategory} />}
         </View>
         <FormField
           label="Or type a new category"
@@ -235,20 +254,9 @@ const createStyles = (colors: ThemeColors) =>
     amount: {
       fontVariant: ['tabular-nums'],
     },
-    note: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: spacing.md,
-    },
-    noteText: {
-      ...typography.meta,
-      flex: 1,
-      color: colors.textMuted,
-    },
-    noteAction: {
-      ...typography.meta,
-      fontFamily: fonts.semiBold,
-      color: colors.accent,
+    item: {
+      maxHeight: 3 * typography.body.lineHeight + 2 * (spacing.sm + spacing.xs),
+      textAlignVertical: 'top',
     },
     footer: {
       paddingHorizontal: spacing.gutter,

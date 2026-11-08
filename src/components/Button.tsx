@@ -7,7 +7,7 @@ type ButtonProps = {
   title: string;
   onPress: () => void;
   disabled?: boolean;
-  variant?: 'primary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger';
 };
 
 export function Button({ title, onPress, disabled = false, variant = 'primary' }: ButtonProps) {
@@ -22,11 +22,12 @@ export function Button({ title, onPress, disabled = false, variant = 'primary' }
       style={({ pressed }) => [
         styles.button,
         variant === 'danger' && styles.danger,
+        variant === 'secondary' && styles.secondary,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
     >
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, variant === 'secondary' && styles.secondaryTitle]}>{title}</Text>
     </Pressable>
   );
 }
@@ -42,6 +43,11 @@ const createStyles = (colors: ThemeColors) =>
     danger: {
       backgroundColor: colors.expenseFill,
     },
+    secondary: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
     pressed: {
       opacity: 0.85,
       transform: [{ scale: 0.98 }],
@@ -52,5 +58,8 @@ const createStyles = (colors: ThemeColors) =>
     title: {
       ...typography.button,
       color: colors.onPrimary,
+    },
+    secondaryTitle: {
+      color: colors.accent,
     },
   });
