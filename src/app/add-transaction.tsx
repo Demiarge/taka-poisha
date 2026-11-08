@@ -6,11 +6,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/components/Button';
 import { FormField } from '@/components/FormField';
 import { TypeToggle } from '@/components/TypeToggle';
-import { STARTER_CATEGORIES } from '@/constants/model';
 import { spacing, typography, type ThemeColors } from '@/constants/theme';
-import { listPromptCategories } from '@/db/categories';
 import { useThemedStyles } from '@/hooks/useTheme';
-import { parseTransaction } from '@/services/parseTransaction';
+import { readTransaction } from '@/services/readTransaction';
 import type { TransactionType } from '@/types/transaction';
 import { toIsoDate } from '@/utils/format';
 
@@ -26,8 +24,7 @@ export default function AddTransactionScreen() {
   async function handleNext() {
     setIsReading(true);
     try {
-      const categories = await listPromptCategories(db).catch(() => STARTER_CATEGORIES);
-      const parsed = await parseTransaction(text, categories, type ?? undefined);
+      const parsed = await readTransaction(db, text, type ?? undefined);
       // Route params must be strings, so missing values become ''.
       router.push({
         pathname: '/confirm',
@@ -42,6 +39,7 @@ export default function AddTransactionScreen() {
           readBy: parsed.readBy,
           otherCurrency: parsed.otherCurrency ?? '',
           typeOverridden: parsed.typeOverridden ? '1' : '',
+          categoryNote: parsed.categoryNote ? JSON.stringify(parsed.categoryNote) : '',
         },
       });
     } finally {

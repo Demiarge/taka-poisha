@@ -71,7 +71,6 @@ export default function EditTransactionScreen() {
         date: transaction.date,
         category: transaction.category,
       }}
-      submitTitle="Save changes"
       onSubmit={handleSave}
     >
       <Button title="Delete" variant="danger" onPress={confirmDelete} />

@@ -1,4 +1,5 @@
 // Prompt, grammar and settings copy the Colab tests (training/run6/report.txt), so phone answers stay comparable.
+import type { TransactionType } from '@/types/transaction';
 
 export const MODEL_FILE = 'taka-poisha-gemma-270m-q5-mix.gguf';
 
@@ -39,6 +40,27 @@ export const COMPLETION_SETTINGS = {
 };
 
 export const UNCATEGORISED = 'Uncategorised';
+
+/** MiniLM, for matching category names (training/embed-test/report.txt). Apache-2.0. */
+export const EMBED_MODEL_FILE = 'all-MiniLM-L6-v2-Q8_0.gguf';
+
+// From the phone tests in training/embed-test: switching also needs a clear lead over the runner-up.
+export const CATEGORY_MATCH = { auto: 0.5, lead: 0.15, suggest: 0.45 };
+export const PAST_ITEM_MATCH = { auto: 0.4, suggest: 0.3 };
+
+/** Extra words for matching starter categories, never shown. Keep in step with rank_test.py. */
+export const CATEGORY_HINTS: Record<TransactionType, Record<string, string[]>> = {
+  expense: {
+    // Not "food": too general, it pulled Health and Entertainment towards Eating out.
+    'eating out': ['restaurant', 'meal'],
+    bills: ['utilities', 'electricity'],
+    transport: ['fuel', 'commute'],
+    groceries: ['bazar'],
+  },
+  income: {
+    freelance: ['side income'],
+  },
+};
 
 /** Most categories of each type sent in the prompt, so it stays short. */
 export const MAX_PROMPT_CATEGORIES = { expense: 12, income: 8 };

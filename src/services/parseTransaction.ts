@@ -1,4 +1,5 @@
 import { UNCATEGORISED, type CategoryLists } from '@/constants/model';
+import { hasCategory as inList } from '@/db/categories';
 import { loadModel, runModel } from '@/services/model';
 import type { ParsedTransaction, TransactionType } from '@/types/transaction';
 import { removeDateWords, resolveDate } from '@/utils/relativeDate';
@@ -30,10 +31,6 @@ type ModelAnswer = {
 
 function cleanText(value: string | null): string | null {
   return value?.trim() || null;
-}
-
-function inList(names: string[], name: string): boolean {
-  return names.some((other) => other.toLowerCase() === name.toLowerCase());
 }
 
 async function readWithModel(text: string, categories: CategoryLists): Promise<ModelAnswer> {

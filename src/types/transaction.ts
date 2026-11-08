@@ -38,6 +38,16 @@ export type ParsedTransaction = {
   isNewCategory: boolean;
 };
 
+/** A line under the category chips explaining an automatic choice or offering one, with a one-tap action. */
+export type CategoryNote = {
+  text: string;
+  actionLabel: string;
+  /** The category the action switches to. */
+  value: string;
+  /** The note shows only while this is the chosen category. */
+  shownFor: string;
+};
+
 export type MonthSummary = {
   income: number;
   expenses: number;

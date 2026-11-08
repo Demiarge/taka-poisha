@@ -6,7 +6,7 @@ import { TransactionForm } from '@/components/TransactionForm';
 import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
 import { addTransaction } from '@/db/transactions';
 import { useThemedStyles } from '@/hooks/useTheme';
-import type { TransactionFields } from '@/types/transaction';
+import type { CategoryNote, TransactionFields } from '@/types/transaction';
 
 type ConfirmParams = {
   type?: string;
@@ -19,7 +19,16 @@ type ConfirmParams = {
   readBy?: string;
   otherCurrency?: string;
   typeOverridden?: string;
+  categoryNote?: string;
 };
+
+function parseNote(json: string | undefined): CategoryNote | null {
+  try {
+    return json ? (JSON.parse(json) as CategoryNote) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Shows the extracted details so the user can correct them before saving. */
 export default function ConfirmScreen() {
@@ -57,18 +66,24 @@ export default function ConfirmScreen() {
         date: params.date ?? '',
         category: params.category ?? '',
       }}
-      submitTitle="Save"
       onSubmit={handleSave}
+      categoryNote={parseNote(params.categoryNote)}
       header={
-        notices.length > 0 && (
-          <View style={styles.notice}>
-            {notices.map((notice) => (
-              <Text key={String(notice)} style={styles.noticeText}>
-                {notice}
+        <View style={styles.card}>
+          {params.rawInput ? (
+            <View style={styles.original}>
+              <Text style={styles.label}>You wrote</Text>
+              <Text style={styles.originalText} selectable>
+                {params.rawInput}
               </Text>
-            ))}
-          </View>
-        )
+            </View>
+          ) : null}
+          {notices.map((notice) => (
+            <Text key={String(notice)} style={styles.noticeText}>
+              {notice}
+            </Text>
+          ))}
+        </View>
       }
     />
   );
@@ -76,11 +91,22 @@ export default function ConfirmScreen() {
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    notice: {
+    card: {
       backgroundColor: colors.surface,
       borderRadius: radius.lg,
       padding: spacing.md,
+      gap: spacing.sm,
+    },
+    original: {
       gap: spacing.xs,
+    },
+    label: {
+      ...typography.label,
+      color: colors.textMuted,
+    },
+    originalText: {
+      ...typography.body,
+      color: colors.text,
     },
     noticeText: {
       ...typography.meta,
