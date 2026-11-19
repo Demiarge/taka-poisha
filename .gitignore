@@ -1,0 +1,92 @@
+
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+.gradle/
+build/
+*.orig.*
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+credentials.json
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env.local
+.env*.local
+.env.production.local
+.env.development.local
+
+# typescript
+*.tsbuildinfo
+
+
+
+# Secrets & credentials
+secrets/
+.credentials/
+.secrets/
+
+# generated native folders
+/ios
+/android
+
+# AI models and training output
+*.gguf
+*.safetensors
+*.bin
+*.pt
+.ipynb_checkpoints/
+checkpoints/
+training/
+
+# Built apps
+*.apk
+*.aab
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Real receipt photos and test copies
+test-receipts/
+
+# Model files bundled into the APK at prebuild (too big for git)
+models/
+
+
+# icon
+iconsssss/
+# Release signing key and its password
+keystore/
+
+# helper scripts
+scripts/
+
+# Built release APKs
+release/
