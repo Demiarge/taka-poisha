@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { assignMissingColours } from '@/db/categories';
 import type { NewTransaction, Transaction, TransactionFields, TransactionType } from '@/types/transaction';
 
 const SELECT_TRANSACTIONS = `
@@ -19,12 +20,15 @@ export function getTransaction(db: SQLiteDatabase, id: number): Promise<Transact
 
 /** Not in a transaction with the save: a failed save leaves at worst an unused category. */
 async function resolveCategoryId(db: SQLiteDatabase, name: string, type: TransactionType): Promise<number> {
-  await db.runAsync(
+  const inserted = await db.runAsync(
     'INSERT OR IGNORE INTO categories (name, type, created_at) VALUES (?, ?, ?)',
     name,
     type,
     new Date().toISOString(),
   );
+  if (inserted.changes > 0) {
+    await assignMissingColours(db);
+  }
   const category = await db.getFirstAsync<{ id: number }>(
     'SELECT id FROM categories WHERE name = ? AND type = ?',
     name,

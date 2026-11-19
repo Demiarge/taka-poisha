@@ -4,7 +4,7 @@ const DAYS_AGO = /\b(\d{1,2})\s*(din|days?)\s+(age|ago)\b/i;
 
 // Checked in order. "kal" can mean tomorrow too, but a spending record is almost always in the past.
 const RULES: [RegExp, number][] = [
-  [/\b(porshu|parshu|porshudin)\b/i, 2],
+  [/\b(porshu|parshu|porshudin|possu|possudin)\b/i, 2],
   [/\b(gotokal|gotkal|kalke|kal|yesterday|last night)\b/i, 1],
 ];
 
@@ -12,7 +12,7 @@ const RULES: [RegExp, number][] = [
 const DATE_WORDS = [
   /\b(aj|ajke|aaj|aajke|kal|gotokal|gotkal)\s+(raate?|rate|shokale|sokale|dupure|bikele)\b/gi,
   /\b(\d{1,2}\s*)?(din|days?)\s+(age|ago)\b/gi,
-  /\b(porshu|parshu|porshudin|gotokal|gotkal|kalke|kal|yesterday|last night)\b/gi,
+  /\b(porshu|parshu|porshudin|possu|possudin|gotokal|gotkal|kalke|kal|yesterday|last night)\b/gi,
   /\b(ajke|aajke|aaj|aj|today|tonight|this morning)\b/gi,
 ];
 

@@ -16,9 +16,29 @@ export const lightColors = {
   income: '#15803D',
   expense: '#DC2626',
   warning: '#B45309',
+  /** Behind bottom sheets. */
+  scrim: 'rgba(0, 0, 0, 0.45)',
   /** Backgrounds behind white text, so these stay dark in both themes. */
   incomeFill: '#15803D',
   expenseFill: '#DC2626',
+  /** Category colours: 600-700 shades, at least 4.2:1 on the light background. */
+  chart: {
+    blue: '#2563EB',
+    violet: '#7C3AED',
+    pink: '#DB2777',
+    orange: '#C2410C',
+    amber: '#B45309',
+    teal: '#0F766E',
+    cyan: '#0E7490',
+    indigo: '#4338CA',
+    lime: '#4D7C0F',
+    rose: '#BE123C',
+    /** The "Other" slice only. */
+    slate: '#64748B',
+  },
+  /** Colour picker handles: a white ring with a dark edge shows on any colour. */
+  pickerThumb: '#FFFFFF',
+  pickerThumbEdge: 'rgba(0, 0, 0, 0.4)',
 };
 
 export type ThemeColors = typeof lightColors;
@@ -37,8 +57,25 @@ export const darkColors: ThemeColors = {
   income: '#4ADE80',
   expense: '#F87171',
   warning: '#FBBF24',
+  scrim: 'rgba(0, 0, 0, 0.7)',
   incomeFill: '#15803D',
   expenseFill: '#DC2626',
+  /** 300-400 shades, at least 6:1 on black. */
+  chart: {
+    blue: '#60A5FA',
+    violet: '#A78BFA',
+    pink: '#F472B6',
+    orange: '#FB923C',
+    amber: '#FBBF24',
+    teal: '#2DD4BF',
+    cyan: '#22D3EE',
+    indigo: '#818CF8',
+    lime: '#A3E635',
+    rose: '#FB7185',
+    slate: '#94A3B8',
+  },
+  pickerThumb: '#FFFFFF',
+  pickerThumbEdge: 'rgba(0, 0, 0, 0.4)',
 };
 
 /** The balance card looks the same in both themes. */
@@ -86,3 +123,42 @@ export const typography = {
   label: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16, letterSpacing: 0.1 },
   button: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 20 },
 } satisfies Record<string, TextStyle>;
+
+/** Colours a user can give a category, in default order. Stored by key, so each theme picks its own shade. */
+export const CATEGORY_COLOURS = [
+  'blue',
+  'orange',
+  'violet',
+  'teal',
+  'pink',
+  'amber',
+  'indigo',
+  'cyan',
+  'rose',
+  'lime',
+] as const satisfies readonly (keyof ThemeColors['chart'])[];
+
+export type CategoryColour = (typeof CATEGORY_COLOURS)[number];
+
+/** A custom colour as "#RRGGBB" in capitals. One colour for both themes. */
+export type HexColour = `#${string}`;
+
+/** What a category's `color` column holds: a palette key or a custom hex. */
+export type SavedColour = CategoryColour | HexColour;
+
+export function isCategoryColour(value: unknown): value is CategoryColour {
+  return CATEGORY_COLOURS.includes(value as CategoryColour);
+}
+
+export function isHexColour(value: unknown): value is HexColour {
+  return typeof value === 'string' && /^#[0-9A-F]{6}$/.test(value);
+}
+
+export function isSavedColour(value: unknown): value is SavedColour {
+  return isCategoryColour(value) || isHexColour(value);
+}
+
+/** The colour to draw: a palette key picks this theme's shade, a hex is used as it is. */
+export function resolveColour(value: SavedColour, colors: ThemeColors): string {
+  return isCategoryColour(value) ? colors.chart[value] : value;
+}

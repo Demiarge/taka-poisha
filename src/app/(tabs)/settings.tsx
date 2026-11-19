@@ -1,18 +1,25 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import Constants from 'expo-constants';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/Button';
+import { ExportSheet } from '@/components/ExportSheet';
+import { ImportPreviewSheet } from '@/components/ImportPreviewSheet';
 import { SegmentedControl } from '@/components/SegmentedControl';
 import { radius, spacing, typography, type ThemeColors } from '@/constants/theme';
+import { insertImport } from '@/db/excel';
 import { useColors, useThemedStyles, useThemePreference, type ThemePreference } from '@/hooks/useTheme';
 import { getApiSettings, isApiReady, type ApiSettings } from '@/services/apiSettings';
+import { pickImportFile, type ImportPreview } from '@/services/excelFiles';
+import { ImportError } from '@/utils/excel';
 
 // Placeholder values until the real settings exist.
 const SETTINGS = [
   { label: 'Currency', value: 'BDT (৳)' },
-  { label: 'AI model', value: 'Not downloaded' },
+  { label: 'AI model', value: 'Bundled' },
   { label: 'App version', value: Constants.expoConfig?.version ?? 'Unknown' },
 ];
 
@@ -34,7 +41,12 @@ export default function SettingsScreen() {
   const styles = useThemedStyles(createStyles);
   const { preference, setPreference } = useThemePreference();
   const router = useRouter();
+  const db = useSQLiteContext();
   const [api, setApi] = useState<ApiSettings | null>(null);
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Refreshed on return from the API screen.
   useFocusEffect(
@@ -43,8 +55,41 @@ export default function SettingsScreen() {
     }, []),
   );
 
+  async function handlePickImport() {
+    setIsReading(true);
+    try {
+      const result = await pickImportFile(db);
+      if (result) {
+        setPreview(result);
+      }
+    } catch (error) {
+      Alert.alert(
+        'Can’t import this file',
+        error instanceof ImportError ? error.message : 'Something went wrong while reading it. Please try again.',
+      );
+    } finally {
+      setIsReading(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!preview) {
+      return;
+    }
+    setIsImporting(true);
+    try {
+      const count = await insertImport(db, preview.plan);
+      setPreview(null);
+      Alert.alert('Import done', `${count.toLocaleString('en-US')} ${count === 1 ? 'transaction' : 'transactions'} added.`);
+    } catch {
+      Alert.alert('Import failed', 'Nothing was imported. Please try again.');
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.screen}>
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Theme</Text>
         <SegmentedControl
@@ -77,18 +122,77 @@ export default function SettingsScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Data</Text>
+        <View style={styles.card}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setIsExportOpen(true)}
+            style={({ pressed }) => [styles.row, styles.rowTop, pressed && styles.pressed]}
+          >
+            <Text style={styles.label}>Export to Excel</Text>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ busy: isReading, disabled: isReading }}
+            disabled={isReading}
+            onPress={handlePickImport}
+            style={({ pressed }) => [styles.row, styles.rowBottom, styles.divider, pressed && styles.pressed]}
+          >
+            <Text style={styles.label}>Import from Excel</Text>
+            {isReading ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : (
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>About</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/licences')}
+          style={({ pressed }) => [styles.card, styles.row, pressed && styles.pressed]}
+        >
+          <Text style={styles.label}>Licences</Text>
+          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        </Pressable>
+      </View>
+
       {__DEV__ && <Button title="Model test (development)" onPress={() => router.push('/model-test')} />}
-    </View>
+
+      <ExportSheet visible={isExportOpen} onClose={() => setIsExportOpen(false)} />
+      <ImportPreviewSheet
+        preview={preview}
+        isImporting={isImporting}
+        onImport={handleImport}
+        onClose={() => setPreview(null)}
+      />
+    </ScrollView>
   );
 }
 
 const createStyles = (colors: ThemeColors) =>
   StyleSheet.create({
-    screen: {
+    scroll: {
       flex: 1,
+      backgroundColor: colors.background,
+    },
+    screen: {
       padding: spacing.gutter,
       gap: spacing.lg,
-      backgroundColor: colors.background,
+    },
+    // The pressed colour follows the card's rounded corners.
+    rowTop: {
+      borderTopLeftRadius: radius.lg,
+      borderTopRightRadius: radius.lg,
+    },
+    rowBottom: {
+      borderBottomLeftRadius: radius.lg,
+      borderBottomRightRadius: radius.lg,
     },
     section: {
       gap: spacing.sm,

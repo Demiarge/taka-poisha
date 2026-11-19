@@ -12,6 +12,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { ModelSetupGate } from '@/components/ModelSetupGate';
 import { darkColors, fonts, lightColors, type ThemeColors } from '@/constants/theme';
 import { migrateDatabase } from '@/db/schema';
 import { ThemePreferenceProvider, useColors, useThemePreference } from '@/hooks/useTheme';
@@ -60,6 +61,7 @@ function RootNavigator() {
         <Stack.Screen name="transaction/[id]" options={{ title: 'Edit transaction' }} />
         <Stack.Screen name="model-test" options={{ title: 'Model test' }} />
         <Stack.Screen name="api-settings" options={{ title: 'API' }} />
+        <Stack.Screen name="licences" options={{ title: 'Licences' }} />
       </Stack>
       <StatusBar style={isDark ? 'light' : 'dark'} />
     </ThemeProvider>
@@ -88,9 +90,11 @@ export default function RootLayout() {
 
   return (
     <ThemePreferenceProvider>
-      <SQLiteProvider databaseName="taka-poisha.db" onInit={migrateDatabase}>
-        <RootNavigator />
-      </SQLiteProvider>
+      <ModelSetupGate>
+        <SQLiteProvider databaseName="taka-poisha.db" onInit={migrateDatabase}>
+          <RootNavigator />
+        </SQLiteProvider>
+      </ModelSetupGate>
     </ThemePreferenceProvider>
   );
 }

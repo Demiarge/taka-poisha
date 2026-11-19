@@ -18,7 +18,10 @@ export type Transaction = {
 /** The parts of a transaction the user can edit. */
 export type TransactionFields = Pick<Transaction, 'type' | 'amount' | 'item' | 'shop' | 'category' | 'date'>;
 
-export type TransactionSource = 'text' | 'receipt_local' | 'receipt_api';
+/** Matches the database's CHECK rule on `source`. */
+export const TRANSACTION_SOURCES = ['text', 'receipt_local', 'receipt_api', 'import'] as const;
+
+export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
 export type NewTransaction = TransactionFields & {
   currency: string;

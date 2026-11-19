@@ -1,6 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
 import { STARTER_CATEGORIES } from '@/constants/model';
+import { assignMissingColours } from '@/db/categories';
 
 const TRANSACTIONS_TABLE = (name: string) => `
   CREATE TABLE ${name} (
@@ -12,7 +13,7 @@ const TRANSACTIONS_TABLE = (name: string) => `
     shop         TEXT,
     category_id  INTEGER NOT NULL,
     date         TEXT NOT NULL,
-    source       TEXT NOT NULL CHECK (source IN ('text', 'receipt_local', 'receipt_api')),
+    source       TEXT NOT NULL CHECK (source IN ('text', 'receipt_local', 'receipt_api', 'import')),
     raw_input    TEXT,
     embedding    BLOB,
     created_at   TEXT NOT NULL,
@@ -23,6 +24,7 @@ const TRANSACTIONS_TABLE = (name: string) => `
 const DATE_INDEX = 'CREATE INDEX idx_transactions_date ON transactions (date DESC, id DESC);';
 
 // Category `embedding` holds MiniLM vectors for matching; the transactions column is unused.
+// Category `color` is a palette key (CATEGORY_COLOURS), so each theme picks its own shade, or a custom "#RRGGBB".
 // UNIQUE (id, type) backs the two-column FK, which makes a category's type match its transaction's.
 const CREATE_TABLES = `
   CREATE TABLE categories (
@@ -31,6 +33,7 @@ const CREATE_TABLES = `
     type        TEXT NOT NULL CHECK (type IN ('income', 'expense')),
     embedding   BLOB,
     created_at  TEXT NOT NULL,
+    color       TEXT,
     UNIQUE (name, type),
     UNIQUE (id, type)
   );
@@ -38,7 +41,7 @@ const CREATE_TABLES = `
   ${DATE_INDEX}
 `;
 
-const DATABASE_VERSION = 3;
+const DATABASE_VERSION = 5;
 
 /** The model's prompt needs a category list, so a new database starts with the list it was trained on. */
 async function seedStarterCategories(db: SQLiteDatabase): Promise<void> {
@@ -56,19 +59,20 @@ async function seedStarterCategories(db: SQLiteDatabase): Promise<void> {
 }
 
 /**
- * Version 3 renames the photo-sent-to-an-API source to 'receipt_api'. SQLite can't change a CHECK rule,
- * so the table is copied; nothing references transactions, so foreign keys can stay on.
+ * Copies transactions into a table with the current source rule, because SQLite can't change a CHECK rule.
+ * Version 3 renamed the photo-sent-to-an-API source to 'receipt_api'; version 5 allows 'import'.
+ * Nothing references transactions, so foreign keys can stay on.
  */
-async function renameApiSource(db: SQLiteDatabase): Promise<void> {
+async function rebuildTransactions(db: SQLiteDatabase): Promise<void> {
   await db.execAsync(`
-    ${TRANSACTIONS_TABLE('transactions_v3')}
-    INSERT INTO transactions_v3
+    ${TRANSACTIONS_TABLE('transactions_new')}
+    INSERT INTO transactions_new
       SELECT id, type, amount, currency, item, shop, category_id, date,
              CASE WHEN source IN ('text', 'receipt_local') THEN source ELSE 'receipt_api' END,
              raw_input, embedding, created_at
       FROM transactions;
     DROP TABLE transactions;
-    ALTER TABLE transactions_v3 RENAME TO transactions;
+    ALTER TABLE transactions_new RENAME TO transactions;
     ${DATE_INDEX}
   `);
 }
@@ -91,9 +95,16 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
     if (currentVersion < 2) {
       await seedStarterCategories(db);
     }
-    // A fresh database already has the new rule.
-    if (currentVersion >= 1 && currentVersion < 3) {
-      await renameApiSource(db);
+    // A fresh database already has the current source rule. Before version 5 no row can be 'import'.
+    if (currentVersion >= 1 && currentVersion < 5) {
+      await rebuildTransactions(db);
+    }
+    // Version 4 adds category colours; a fresh database already has the column.
+    if (currentVersion >= 1 && currentVersion < 4) {
+      await db.execAsync('ALTER TABLE categories ADD COLUMN color TEXT');
+    }
+    if (currentVersion < 4) {
+      await assignMissingColours(db);
     }
     await db.execAsync(`PRAGMA user_version = ${DATABASE_VERSION}`);
   });
